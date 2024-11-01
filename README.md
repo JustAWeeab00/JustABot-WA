@@ -2,7 +2,9 @@
 
 ![blue-archive-ni-ga](https://github.com/user-attachments/assets/3106fe84-b505-4c46-a4af-6388e32a0605)
 
-# Live yt Just A Weeaboo
+# My YouTube Channel
+[Live yt Just A Weeaboo](https://www.youtube.com/@JustAWeeaboo)
+
 
 # WhatsApp Media Bot
 
@@ -23,23 +25,26 @@ A WhatsApp bot built with Node.js and `whatsapp-web.js` to handle multimedia pro
 
 ## Installation
 
-### Step 1: Clone the Repository
+### Clone the Repository
 
 ```bash
 git clone https://github.com/JustAWeeab00/JustABot-WA.git
 cd whatsapp-media-bot
 ```
-
+# Install Node.js Dependencies
 ```
 npm install
 ```
-
+# pip install spotdl
 ```
 pip install spotdl
 ```
-
 # Install the full version
-https://ffmpeg.org/download.html
+
+You can download **FFmpeg** from [FFmpeg’s official website](https://ffmpeg.org/download.html).
+
+For more on **whatsapp-web.js**, check out their [npm page](https://www.npmjs.com/package/whatsapp-web.js).
+
 
 # Run
 ```

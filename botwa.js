@@ -187,30 +187,68 @@ async function downloadSpotifySong(url, msg) {
     });
 }
 
-async function downloadYouTubeAudio(url, msg) {
-    const audioOutputPath = path.join(musicFolderPath, 'youtube_audio.mp3'); // Temporary file path
+const downloadYouTubeMedia = async (url, msg, format) => {
+    return new Promise((resolve, reject) => {
+        // Set output path based on format
+        const outputPath = format === 'mp4' ? 
+            path.join(musicFolderPath, 'youtube_video.mp4') : 
+            path.join(musicFolderPath, 'youtube_audio.mp3');
 
-    try {
-        // Use youtube-dl to download audio directly
-        await youtubedl(url, {
-            extractAudio: true,
-            audioFormat: 'mp3',
-            output: audioOutputPath,
-            restrictFilenames: true
+        // Define the yt-dlp command based on the requested format
+        const ytDlpCommand = `yt-dlp "${url}" --output "${outputPath}" ${format === 'mp3' ? '--extract-audio --audio-format mp3' : '--format bestvideo+bestaudio'} --restrict-filenames`;
+
+        exec(ytDlpCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error('Error downloading or sending YouTube', format, ':', error);
+                reject(new Error(`Error downloading or sending YouTube ${format}: ${error.message}`));
+                return;
+            }
+
+            console.log('yt-dlp stdout:', stdout);
+            console.error('yt-dlp stderr:', stderr);
+
+            // After download completes, send the file based on the format
+            const musicFilePath = outputPath;
+            const musicMedia = MessageMedia.fromFilePath(musicFilePath);
+
+            client.sendMessage(msg.from, musicMedia).then(() => {
+                console.log(`Sent YouTube ${format} successfully.`);
+                resolve();
+            }).catch(err => {
+                console.error('Error sending the YouTube media:', err);
+                reject(new Error('Failed to send the YouTube media.'));
+            });
         });
+    });
+};
 
-        // Read the audio file and send it as a WhatsApp message
-        const audioBuffer = fs.readFileSync(audioOutputPath);
-        const audioMedia = new MessageMedia('audio/mpeg', audioBuffer.toString('base64'), 'YouTube Audio.mp3');
-        await client.sendMessage(msg.from, audioMedia);
 
-        // Optionally delete the file after sending
-        fs.unlinkSync(audioOutputPath);
-    } catch (error) {
-        console.error('Error downloading or sending YouTube audio:', error);
-        await client.sendMessage(msg.from, "Failed to download YouTube audio.");
+// Command handler for YouTube download
+client.on('message', async msg => {
+    if (msg.body.startsWith("!yt")) {
+        const args = msg.body.split(" ");
+        
+        // Ensure there's at least one argument (the URL)
+        if (args.length < 2) {
+            await client.sendMessage(msg.from, "Please provide a YouTube URL.");
+            return;
+        }
+        
+        const url = args[1];
+        const format = args[2] === 'video' ? 'mp4' : 'mp3'; // Default to 'mp3' if no format is specified
+
+        // Validate URL format
+        const isValidUrl = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/.test(url);
+        if (!isValidUrl) {
+            await client.sendMessage(msg.from, "Please provide a valid YouTube URL.");
+            return;
+        }
+
+        await client.sendMessage(msg.from, `Downloading your YouTube ${format}...`);
+        await downloadYouTubeMedia(url, msg, format);
     }
-}
+});
+
 
 // Handle commands
 client.on('message', async msg => {
@@ -302,7 +340,7 @@ client.on('message', async msg => {
 
                 
             case "ytdl":
-                        if (!commandArg || !commandArg.includes('youtube.com') && !commandArg.includes('youtu.be')) {
+                    if (!commandArg || !commandArg.includes('youtube.com') && !commandArg.includes('youtu.be')) {
                             await client.sendMessage(msg.from, "Please provide a valid YouTube URL.");
                             return;
                         }

@@ -1,9 +1,9 @@
 # JustABot-WA
 
-![blue-archive-ni-ga](https://github.com/user-attachments/assets/3106fe84-b505-4c46-a4af-6388e32a0605)
+![](https://github.com/user-attachments/assets/3106fe84-b505-4c46-a4af-6388e32a0605)
 
 # My YouTube Channel
-[Live yt Just A Weeaboo](https://www.youtube.com/@JustAWeeaboo)
+[Just A Weeaboo](https://www.youtube.com/@JustAWeeaboo)
 
 
 # WhatsApp Media Bot
@@ -35,9 +35,17 @@ cd whatsapp-media-bot
 ```
 npm install
 ```
+# Install sharp
+```
+npm install sharp
+```
 # pip install spotdl
 ```
 pip install spotdl
+```
+# Install youtube-dl-exec
+```
+npm install youtube-dl-exec
 ```
 # Install the full version
 

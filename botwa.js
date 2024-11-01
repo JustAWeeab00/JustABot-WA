@@ -6,6 +6,7 @@ const axios = require('axios'); // For IP location fetching
 const path = require('path'); // For handling file paths
 const ytdl = require('ytdl-core'); // YouTube downloader
 const { exec } = require('child_process'); // To run spotdl command
+const youtubedl = require('youtube-dl-exec');
 
 // Initialize WhatsApp client
 client = new Client({
@@ -186,6 +187,30 @@ async function downloadSpotifySong(url, msg) {
     });
 }
 
+async function downloadYouTubeAudio(url, msg) {
+    const audioOutputPath = path.join(musicFolderPath, 'youtube_audio.mp3'); // Temporary file path
+
+    try {
+        // Use youtube-dl to download audio directly
+        await youtubedl(url, {
+            extractAudio: true,
+            audioFormat: 'mp3',
+            output: audioOutputPath,
+            restrictFilenames: true
+        });
+
+        // Read the audio file and send it as a WhatsApp message
+        const audioBuffer = fs.readFileSync(audioOutputPath);
+        const audioMedia = new MessageMedia('audio/mpeg', audioBuffer.toString('base64'), 'YouTube Audio.mp3');
+        await client.sendMessage(msg.from, audioMedia);
+
+        // Optionally delete the file after sending
+        fs.unlinkSync(audioOutputPath);
+    } catch (error) {
+        console.error('Error downloading or sending YouTube audio:', error);
+        await client.sendMessage(msg.from, "Failed to download YouTube audio.");
+    }
+}
 
 // Handle commands
 client.on('message', async msg => {
@@ -274,6 +299,16 @@ client.on('message', async msg => {
                     await client.sendMessage(msg.from, fileListMessage);
                 }
                 break;
+
+                
+            case "ytdl":
+                        if (!commandArg || !commandArg.includes('youtube.com') && !commandArg.includes('youtu.be')) {
+                            await client.sendMessage(msg.from, "Please provide a valid YouTube URL.");
+                            return;
+                        }
+                        await client.sendMessage(msg.from, "Downloading your YouTube audio...");
+                        await downloadYouTubeAudio(commandArg, msg);
+                        break;
         }
     }
 });

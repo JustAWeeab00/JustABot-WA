@@ -38,9 +38,13 @@ function isOnCooldown(msg) {
 }
 
 const musicFolderPath = 'C:\\BOT\\spotify'; // Change to the 'spotify' directory
-
 if (!fs.existsSync(musicFolderPath)) 
     fs.mkdirSync(musicFolderPath, { recursive: true }); // Create the directory
+
+const tempDir = 'C:\\BOT\\temp';
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+}
 
 // Helper function to get the list of music files
 function getMusicFiles() {
@@ -191,8 +195,8 @@ const downloadYouTubeMedia = async (url, msg, format) => {
     return new Promise((resolve, reject) => {
         // Set output path based on format
         const outputPath = format === 'mp4' ? 
-            path.join(musicFolderPath, 'youtube_video.mp4') : 
-            path.join(musicFolderPath, 'youtube_audio.mp3');
+            path.join(tempDir, 'youtube_video.mp4') : 
+            path.join(tempDir, 'youtube_audio.mp3');
 
         // Define the yt-dlp command based on the requested format
         const ytDlpCommand = `yt-dlp "${url}" --output "${outputPath}" ${format === 'mp3' ? '--extract-audio --audio-format mp3' : '--format bestvideo+bestaudio'} --restrict-filenames`;
@@ -207,16 +211,80 @@ const downloadYouTubeMedia = async (url, msg, format) => {
             console.log('yt-dlp stdout:', stdout);
             console.error('yt-dlp stderr:', stderr);
 
-            // After download completes, send the file based on the format
-            const musicFilePath = outputPath;
-            const musicMedia = MessageMedia.fromFilePath(musicFilePath);
+            // After download completes, look for any file in the temp directory
+            setTimeout(() => {
+                fs.readdir(tempDir, (err, files) => {
+                    if (err) {
+                        console.error('Error reading directory:', err);
+                        reject(new Error('Failed to read temp directory.'));
+                        return;
+                    }
 
-            client.sendMessage(msg.from, musicMedia).then(() => {
-                console.log(`Sent YouTube ${format} successfully.`);
-                resolve();
-            }).catch(err => {
-                console.error('Error sending the YouTube media:', err);
-                reject(new Error('Failed to send the YouTube media.'));
+                    // Filter to get the first file found
+                    const fileToSend = files.find(file => {
+                        const filePath = path.join(tempDir, file);
+                        return fs.statSync(filePath).isFile(); // Check if it is a file
+                    });
+
+                    if (!fileToSend) {
+                        console.error('No files found in temp directory.');
+                        reject(new Error('No files to send.'));
+                        return;
+                    }
+
+                    const filePathToSend = path.join(tempDir, fileToSend);
+                    console.log(`Attempting to send file: ${filePathToSend}`); // Log the file being sent
+                    
+                    const media = MessageMedia.fromFilePath(filePathToSend);
+
+                    client.sendMessage(msg.from, media).then(() => {
+                        console.log(`Sent file: ${fileToSend} successfully.`);
+                        
+                        // Remove the file after successful sending
+                        fs.unlink(filePathToSend, (unlinkErr) => {
+                            if (unlinkErr) {
+                                console.error(`Error deleting file: ${filePathToSend}`, unlinkErr);
+                            } else {
+                                console.log(`Deleted file: ${filePathToSend}`);
+                            }
+                        });
+                        resolve();
+                    }).catch(err => {
+                        console.error('Error sending the file:', err);
+                        reject(new Error('Failed to send the file.'));
+                    });
+                });
+            }, 1000); // Increased the timeout to allow for file operations to complete
+        });
+    });
+};
+
+// Function to clean up the temp folder
+const cleanUpTempFolder = (folderPath) => {
+    fs.readdir(folderPath, (err, files) => {
+        if (err) {
+            console.error('Error reading directory:', err);
+            return;
+        }
+
+        files.forEach(file => {
+            const filePath = path.join(folderPath, file);
+            // Check if the file is a regular file and not a directory
+            fs.stat(filePath, (err, stats) => {
+                if (err) {
+                    console.error('Error getting file stats:', err);
+                    return;
+                }
+                // Remove files that are not .mp4 or .mp3
+                if (stats.isFile() && !filePath.endsWith('.mp4') && !filePath.endsWith('.mp3')) {
+                    fs.unlink(filePath, (err) => {
+                        if (err) {
+                            console.error('Error deleting file:', err);
+                        } else {
+                            console.log('Deleted file:', filePath);
+                        }
+                    });
+                }
             });
         });
     });

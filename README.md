@@ -5,7 +5,7 @@
 # My YouTube Channel
 ![Screenshot 2024-11-04 014042](https://github.com/user-attachments/assets/08c13ff8-eb35-4851-94fe-88cf9f60171d)
 
-[![large-filled-youtube](large/filled/youtube.svg)](https://www.youtube.com/@JustAWeeaboo)
+![youtube](large/filled/youtube.svg)(https://www.youtube.com/@JustAWeeaboo)
 
 
 

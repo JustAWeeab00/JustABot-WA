@@ -4,7 +4,7 @@
 
 # My Social Media
 [![youtube (1)](https://github.com/user-attachments/assets/a2bd1ead-5873-4764-a657-e1afaf6441ed)](https://www.youtube.com/@JustAWeeaboo/videos)
-![instagram (1)](https://github.com/user-attachments/assets/bf262821-4dc7-4517-ad02-516dc39d2efd)
+[![instagram (1)](https://github.com/user-attachments/assets/bf262821-4dc7-4517-ad02-516dc39d2efd)](https://www.instagram.com/justaweeaboo69/)
 
 
 

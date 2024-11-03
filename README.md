@@ -3,8 +3,9 @@
 ![](https://github.com/user-attachments/assets/3106fe84-b505-4c46-a4af-6388e32a0605)
 
 # My Social Media
-[![youtube](https://github.com/user-attachments/assets/c8e7f316-5381-48e8-b419-34c54e221b26)](https://www.youtube.com/@JustAWeeaboo/videos)
-![instagram](https://github.com/user-attachments/assets/90e9e3d2-f142-45a4-8f0b-7e06fe226589)
+[![youtube (1)](https://github.com/user-attachments/assets/a2bd1ead-5873-4764-a657-e1afaf6441ed)](https://www.youtube.com/@JustAWeeaboo/videos)
+![instagram (1)](https://github.com/user-attachments/assets/bf262821-4dc7-4517-ad02-516dc39d2efd)
+
 
 
 

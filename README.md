@@ -39,7 +39,7 @@ npm install
 ```
 npm install sharp
 ```
-# install spotdl
+# Install spotdl
 ```
 pip install spotdl
 ```

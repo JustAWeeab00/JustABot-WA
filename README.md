@@ -2,10 +2,10 @@
 
 ![](https://github.com/user-attachments/assets/3106fe84-b505-4c46-a4af-6388e32a0605)
 
-# My YouTube Channel
-![Screenshot 2024-11-04 014042](https://github.com/user-attachments/assets/08c13ff8-eb35-4851-94fe-88cf9f60171d)
+# My Social Media
+[![youtube](https://github.com/user-attachments/assets/c8e7f316-5381-48e8-b419-34c54e221b26)](https://www.youtube.com/@JustAWeeaboo/videos)
+![instagram](https://github.com/user-attachments/assets/90e9e3d2-f142-45a4-8f0b-7e06fe226589)
 
-![youtube](https://github.com/user-attachments/assets/c8e7f316-5381-48e8-b419-34c54e221b26)
 
 
 

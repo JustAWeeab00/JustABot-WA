@@ -15,10 +15,10 @@
 A WhatsApp bot built with Node.js and `whatsapp-web.js` to handle multimedia processing and commands, such as creating stickers from images and videos. YouTube, Instagram, TikTok videos, and downloading Spotify tracks
 
 ## Features
-- Download YouTube videos and audio.
+- Download YouTube, Instagram, TikTok videos, and downloading Spotify tracks
 - Convert images, videos, and GIFs into WhatsApp stickers.
 - Download Spotify tracks directly to a specified directory.
-- Basic command handling with cooldowns.
+- 
 
 ## Prerequisites
 

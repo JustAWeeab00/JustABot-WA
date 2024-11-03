@@ -8,7 +8,7 @@
 
 # WhatsApp Media Bot
 
-A WhatsApp bot built with Node.js and `whatsapp-web.js` to handle multimedia processing and commands, such as downloading YouTube videos, creating stickers from images and videos, and downloading Spotify tracks.
+A WhatsApp bot built with Node.js and `whatsapp-web.js` to handle multimedia processing and commands, such as creating stickers from images and videos. YouTube, Instagram, TikTok videos, and downloading Spotify tracks
 
 ## Features
 - Download YouTube videos and audio.

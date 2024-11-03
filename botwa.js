@@ -2,7 +2,7 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const sharp = require('sharp'); // For image processing
 const ffmpeg = require('fluent-ffmpeg'); // For video/GIF processing
 const fs = require('fs'); // For handling file system
-const axios = require('axios'); // For IP location fetching
+const axios = require('axios'); 
 const path = require('path'); // For handling file paths
 const ytdl = require('ytdl-core'); // YouTube downloader
 const { exec } = require('child_process'); // To run spotdl command
@@ -201,17 +201,25 @@ const downloadYouTubeMedia = async (url, msg, format) => {
         // Define the yt-dlp command based on the requested format
         const ytDlpCommand = `yt-dlp "${url}" --output "${outputPath}" ${format === 'mp3' ? '--extract-audio --audio-format mp3' : '--format bestvideo+bestaudio'} --restrict-filenames`;
 
-        exec(ytDlpCommand, (error, stdout, stderr) => {
+        exec(ytDlpCommand, async (error, stdout, stderr) => {
             if (error) {
                 console.error('Error downloading or sending YouTube', format, ':', error);
-                reject(new Error(`Error downloading or sending YouTube ${format}: ${error.message}`));
+                
+                // If there's an error, try downloading as .webm
+                console.log("Attempting to download as .webm format due to error.");
+                try {
+                    await downloadAndConvertWebm(url, msg);
+                    resolve();
+                } catch (webmError) {
+                    reject(new Error(`Error downloading YouTube video in both ${format} and webm: ${webmError.message}`));
+                }
                 return;
             }
 
             console.log('yt-dlp stdout:', stdout);
             console.error('yt-dlp stderr:', stderr);
 
-            // After download completes, look for any file in the temp directory
+            // After download completes, look for the file in the temp directory
             setTimeout(() => {
                 fs.readdir(tempDir, (err, files) => {
                     if (err) {
@@ -233,7 +241,7 @@ const downloadYouTubeMedia = async (url, msg, format) => {
                     }
 
                     const filePathToSend = path.join(tempDir, fileToSend);
-                    console.log(`Attempting to send file: ${filePathToSend}`); // Log the file being sent
+                    console.log(`Attempting to send file: ${filePathToSend}`);
                     
                     const media = MessageMedia.fromFilePath(filePathToSend);
 
@@ -254,56 +262,78 @@ const downloadYouTubeMedia = async (url, msg, format) => {
                         reject(new Error('Failed to send the file.'));
                     });
                 });
-            }, 1000); // Increased the timeout to allow for file operations to complete
+            }, 1000); // Timeout to allow file operations to complete
         });
     });
 };
 
-// Function to clean up the temp folder
-const cleanUpTempFolder = (folderPath) => {
-    fs.readdir(folderPath, (err, files) => {
-        if (err) {
-            console.error('Error reading directory:', err);
-            return;
-        }
+// Function to download and convert .webm files to .mp4
+const downloadAndConvertWebm = async (url, msg) => {
+    return new Promise((resolve, reject) => {
+        const webmOutputPath = path.join(tempDir, 'youtube_video.webm');
+        const ytDlpCommand = `yt-dlp "${url}" --output "${webmOutputPath}" --format webm --restrict-filenames`;
 
-        files.forEach(file => {
-            const filePath = path.join(folderPath, file);
-            // Check if the file is a regular file and not a directory
-            fs.stat(filePath, (err, stats) => {
-                if (err) {
-                    console.error('Error getting file stats:', err);
-                    return;
-                }
-                // Remove files that are not .mp4 or .mp3
-                if (stats.isFile() && !filePath.endsWith('.mp4') && !filePath.endsWith('.mp3')) {
-                    fs.unlink(filePath, (err) => {
-                        if (err) {
-                            console.error('Error deleting file:', err);
-                        } else {
-                            console.log('Deleted file:', filePath);
-                        }
-                    });
-                }
-            });
+        exec(ytDlpCommand, async (error, stdout, stderr) => {
+            if (error) {
+                console.error('Error downloading YouTube video in webm format:', error);
+                reject(new Error('Failed to download YouTube video in webm format.'));
+                return;
+            }
+
+            console.log('yt-dlp stdout:', stdout);
+            console.error('yt-dlp stderr:', stderr);
+
+            try {
+                const mp4FilePath = await convertWebmToMp4(webmOutputPath);
+                
+                const media = MessageMedia.fromFilePath(mp4FilePath);
+                await client.sendMessage(msg.from, media);
+                console.log(`Sent converted file: ${mp4FilePath}`);
+
+                // Delete both the original .webm and converted .mp4 files after sending
+                fs.unlinkSync(webmOutputPath);
+                fs.unlinkSync(mp4FilePath);
+                console.log(`Deleted files: ${webmOutputPath} and ${mp4FilePath}`);
+                resolve();
+            } catch (conversionError) {
+                console.error('Error converting or sending .webm file:', conversionError);
+                reject(new Error('Failed to convert or send .webm file.'));
+            }
         });
     });
 };
 
+// Function to convert .webm to .mp4
+function convertWebmToMp4(webmFilePath) {
+    return new Promise((resolve, reject) => {
+        const mp4FilePath = webmFilePath.replace('.webm', '.mp4');
+        
+        ffmpeg(webmFilePath)
+            .output(mp4FilePath)
+            .on('end', () => {
+                console.log(`Converted ${webmFilePath} to ${mp4FilePath}`);
+                resolve(mp4FilePath);
+            })
+            .on('error', (err) => {
+                console.error('Error converting .webm to .mp4:', err);
+                reject(err);
+            })
+            .run();
+    });
+}
 
 // Command handler for YouTube download
 client.on('message', async msg => {
     if (msg.body.startsWith("!yt")) {
         const args = msg.body.split(" ");
         
-        // Ensure there's at least one argument (the URL)
         if (args.length < 2) {
             await client.sendMessage(msg.from, "Please provide a YouTube URL.");
             return;
         }
         
         const url = args[1];
-        const format = args[2] === 'video' ? 'mp4' : 'mp3'; // Default to 'mp3' if no format is specified
+        const format = args[2] === 'video' ? 'mp4' : 'mp3'; 
 
         // Validate URL format
         const isValidUrl = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/.test(url);
@@ -313,10 +343,73 @@ client.on('message', async msg => {
         }
 
         await client.sendMessage(msg.from, `Downloading your YouTube ${format}...`);
-        await downloadYouTubeMedia(url, msg, format);
+        try {
+            await downloadYouTubeMedia(url, msg, format);
+        } catch (error) {
+            await client.sendMessage(msg.from, "Failed to download in the requested format. Try !sendwebm");
+        }
     }
 });
 
+// Function to convert .webm to .mp4
+function convertWebmToMp4(webmFilePath) {
+    return new Promise((resolve, reject) => {
+        const mp4FilePath = webmFilePath.replace('.webm', '.mp4');
+        
+        ffmpeg(webmFilePath)
+            .output(mp4FilePath)
+            .on('end', () => {
+                console.log(`Converted ${webmFilePath} to ${mp4FilePath}`);
+                resolve(mp4FilePath);
+            })
+            .on('error', (err) => {
+                console.error('Error converting .webm to .mp4:', err);
+                reject(err);
+            })
+            .run();
+    });
+}
+
+// Helper function to send .webm files after conversion and delete them after sending
+async function sendAndDeleteWebmFiles(msg) {
+    fs.readdir(tempDir, async (err, files) => {
+        if (err) {
+            console.error('Error reading temp directory:', err);
+            return;
+        }
+
+        // Find .webm files in the temp directory
+        const webmFiles = files.filter(file => file.endsWith('.webm'));
+
+        for (const file of webmFiles) {
+            const webmFilePath = path.join(tempDir, file);
+
+            try {
+                // Convert the .webm file to .mp4
+                const mp4FilePath = await convertWebmToMp4(webmFilePath);
+                
+                // Send the converted .mp4 file
+                const media = MessageMedia.fromFilePath(mp4FilePath);
+                await client.sendMessage(msg.from, media);
+                console.log(`Sent converted file: ${mp4FilePath}`);
+
+                // Delete both the original .webm and converted .mp4 files after sending
+                fs.unlinkSync(webmFilePath);
+                fs.unlinkSync(mp4FilePath);
+                console.log(`Deleted files: ${webmFilePath} and ${mp4FilePath}`);
+            } catch (error) {
+                console.error('Error processing and sending .webm file:', error);
+            }
+        }
+    });
+}
+
+// Command to trigger .webm file sending
+client.on('message', async msg => {
+    if (msg.body.startsWith("!sendwebm")) {
+        await sendAndDeleteWebmFiles(msg);
+    }
+});
 
 // Handle commands
 client.on('message', async msg => {
@@ -405,16 +498,7 @@ client.on('message', async msg => {
                     await client.sendMessage(msg.from, fileListMessage);
                 }
                 break;
-
                 
-            case "ytdl":
-                    if (!commandArg || !commandArg.includes('youtube.com') && !commandArg.includes('youtu.be')) {
-                            await client.sendMessage(msg.from, "Please provide a valid YouTube URL.");
-                            return;
-                        }
-                        await client.sendMessage(msg.from, "Downloading your YouTube audio...");
-                        await downloadYouTubeAudio(commandArg, msg);
-                        break;
         }
     }
 });

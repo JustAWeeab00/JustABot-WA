@@ -3,7 +3,10 @@
 ![](https://github.com/user-attachments/assets/3106fe84-b505-4c46-a4af-6388e32a0605)
 
 # My YouTube Channel
-[Just A Weeaboo](https://www.youtube.com/@JustAWeeaboo)
+![Screenshot 2024-11-04 014042](https://github.com/user-attachments/assets/08c13ff8-eb35-4851-94fe-88cf9f60171d)
+
+[![YouTube Logo](https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png)](https://www.youtube.com/@JustAWeeaboo)
+
 
 
 # WhatsApp Media Bot

@@ -39,7 +39,7 @@ npm install
 ```
 npm install sharp
 ```
-# pip install spotdl
+# install spotdl
 ```
 pip install spotdl
 ```
@@ -47,7 +47,7 @@ pip install spotdl
 ```
 npm install youtube-dl-exec
 ```
-# Install the full version
+# Install ffmpeg full version
 
 You can download **FFmpeg** from [FFmpeg’s official website](https://ffmpeg.org/download.html).
 

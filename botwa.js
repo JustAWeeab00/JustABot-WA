@@ -411,6 +411,84 @@ client.on('message', async msg => {
     }
 });
 
+// Function to fetch upcoming anime
+async function getUpcomingAnime() {
+    try {
+        const response = await axios.get('https://api.jikan.moe/v4/seasons/upcoming');
+        return response.data.data; // Return the list of upcoming anime
+    } catch (error) {
+        console.error('Error fetching upcoming anime:', error);
+        return [];
+    }
+}
+
+// Function to download an image and return its path
+async function downloadImage(url, filename) {
+    const filePath = path.join(tempDir, filename);
+    const response = await axios({
+        url,
+        responseType: 'stream',
+    });
+
+    return new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(filePath);
+        response.data.pipe(writeStream);
+        writeStream.on('finish', () => {
+            resolve(filePath);
+        });
+        writeStream.on('error', reject);
+    });
+}
+
+// Function to handle the command for upcoming anime
+async function handleUpcomingAnimeCommand(chatId) {
+    const animeList = await getUpcomingAnime();
+    if (animeList.length === 0) {
+        sendMessage(chatId, "No upcoming anime found.");
+        return;
+    }
+
+    for (const anime of animeList) {
+        const imageUrl = anime.images.jpg.large_image_url;
+        const filename = `${anime.title.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`; // Sanitize title for filename
+
+        try {
+            const imagePath = await downloadImage(imageUrl, filename); // Download image
+            await sendMessage(chatId, `*Title:* ${anime.title}\n*Start Date:* ${anime.start_date}`, imagePath); // Send message with image
+            fs.unlinkSync(imagePath); // Delete the image after sending
+        } catch (error) {
+            console.error(`Error downloading or sending image for ${anime.title}:`, error);
+            sendMessage(chatId, `Error fetching image for ${anime.title}.`);
+        }
+    }
+}
+
+// Function to send a message using whatsapp-web.js
+async function sendMessage(chatId, message, imagePath = null) {
+    if (imagePath) {
+        const media = new MessageMedia('image/jpeg', fs.readFileSync(imagePath).toString('base64'), path.basename(imagePath));
+        await client.sendMessage(chatId, media, { caption: message });
+    } else {
+        await client.sendMessage(chatId, message);
+    }
+}
+
+// Function to listen for incoming messages
+client.on('message', message => {
+    const chatId = message.from; // Get the chat ID from the incoming message
+    const text = message.body; // Get the message text
+
+    // Check if the message is the command for upcoming anime
+    if (text === '!upcominganime') {
+        handleUpcomingAnimeCommand(chatId);
+    }
+});
+
+// Create temp directory if it doesn't exist
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+}
+
 // Handle commands
 client.on('message', async msg => {
     if (msg.body.startsWith(prefix)) {

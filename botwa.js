@@ -2,11 +2,13 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const sharp = require('sharp'); // For image processing
 const ffmpeg = require('fluent-ffmpeg'); // For video/GIF processing
 const fs = require('fs'); // For handling file system
+require('dotenv').config();
 const axios = require('axios'); 
 const path = require('path'); // For handling file paths
 const ytdl = require('ytdl-core'); // YouTube downloader
 const { exec } = require('child_process'); // To run spotdl command
 const youtubedl = require('youtube-dl-exec');
+const JIKAN_API_URL = process.env.JIKAN_API_URL;
 
 // Initialize WhatsApp client
 client = new Client({
@@ -37,7 +39,7 @@ function isOnCooldown(msg) {
     return false;
 }
 
-const musicFolderPath = 'C:\\BOT\\spotify'; // Change to the 'spotify' directory
+const musicFolderPath = 'C:\\BOT\\temp'; // Change to the 'spotify' directory
 if (!fs.existsSync(musicFolderPath)) 
     fs.mkdirSync(musicFolderPath, { recursive: true }); // Create the directory
 
@@ -411,6 +413,76 @@ client.on('message', async msg => {
     }
 });
 
+// Helper function for Instagram and TikTok download
+async function downloadSocialMediaVideo(url, msg, platform) {
+    return new Promise((resolve, reject) => {
+        const outputPath = path.join(tempDir, `${platform}_video.mp4`);
+
+        // Define yt-dlp command based on platform
+        const ytDlpCommand = `yt-dlp "${url}" --output "${outputPath}" --format mp4 --restrict-filenames`;
+
+        exec(ytDlpCommand, async (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error downloading from ${platform}:`, error);
+                await client.sendMessage(msg.from, `Failed to download the ${platform} video.`);
+                reject(new Error(`Failed to download ${platform} video.`));
+                return;
+            }
+
+            console.log(`${platform} download stdout:`, stdout);
+            console.error(`${platform} download stderr:`, stderr);
+
+            // Send downloaded video
+            const media = MessageMedia.fromFilePath(outputPath);
+            try {
+                await client.sendMessage(msg.from, media);
+                console.log(`Sent ${platform} video: ${outputPath}`);
+                
+                // Clean up the file after sending
+                fs.unlinkSync(outputPath);
+                console.log(`Deleted file: ${outputPath}`);
+                resolve();
+            } catch (err) {
+                console.error(`Error sending ${platform} video:`, err);
+                reject(new Error(`Failed to send ${platform} video.`));
+            }
+        });
+    });
+}
+
+// Command handler for Instagram and TikTok download
+client.on('message', async msg => {
+    const args = msg.body.split(" ");
+    const command = args[0].toLowerCase();
+    const url = args[1];
+
+    if (command === "!insta" || command === "!tiktok") {
+        if (!url) {
+            await client.sendMessage(msg.from, "Please provide a valid URL.");
+            return;
+        }
+
+        // Validate URL format for Instagram and TikTok
+        const instaRegex = /^(https?:\/\/)?(www\.)?(instagram\.com)\/.+$/;
+        const tiktokRegex = /^(https?:\/\/)?(www\.)?(tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com)\/.+$/;
+        const isValidUrl = (command === "!insta" && instaRegex.test(url)) ||
+                           (command === "!tiktok" && tiktokRegex.test(url));
+
+        if (!isValidUrl) {
+            await client.sendMessage(msg.from, `Please provide a valid ${command === "!insta" ? "Instagram" : "TikTok"} URL.`);
+            return;
+        }
+
+        await client.sendMessage(msg.from, `Downloading your ${command === "!insta" ? "Instagram" : "TikTok"} video...`);
+        try {
+            await downloadSocialMediaVideo(url, msg, command === "!insta" ? "Instagram" : "TikTok");
+        } catch (error) {
+            console.error(`Error downloading ${command === "!insta" ? "Instagram" : "TikTok"} video:`, error);
+            await client.sendMessage(msg.from, `Failed to download the ${command === "!insta" ? "Instagram" : "TikTok"} video.`);
+        }
+    }
+});
+
 // Function to fetch upcoming anime
 async function getUpcomingAnime() {
     try {
@@ -489,6 +561,136 @@ if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir);
 }
 
+const genreMap = {
+    'Action': 1,
+    'Adventure': 2,
+    'Cars': 3,
+    'Comedy': 4,
+    'Avante Garde': 5,
+    'Demons': 6,
+    'Mystery': 7,
+    'Drama': 8,
+    'Ecchi': 9,
+    'Fantasy': 10,
+    'Game': 11,
+    'Hentai': 12,
+    'Historical': 13,
+    'Horror': 14,
+    'Kids': 15,
+    'Martial Arts': 17,
+    'Mecha': 18,
+    'Music': 19,
+    'Parody': 20,
+    'Samurai': 21,
+    'Romance': 22,
+    'School': 23,
+    'Sci-Fi': 24,
+    'Shoujo': 25,
+    'Shoujo Ai': 26,
+    'Shounen': 27,
+    'Shounen Ai': 28,
+    'Space': 29,
+    'Sports': 30,
+    'Super Power': 31,
+    'Vampire': 32,
+    'Yaoi': 33,
+    'Yuri': 34,
+    'Harem': 35,
+    'Slice of Life': 36,
+    'Supernatural': 37,
+    'Military': 38,
+    'Police': 39,
+    'Psychological': 40,
+    'Suspense': 41,
+    'Seinen': 42,
+    'Josei': 43,
+};
+
+// Function to fetch anime by genre
+async function getAnimeByGenre(genreId) {
+    try {
+        const response = await axios.get(`https://api.jikan.moe/v4/anime?genres=${genreId}&order_by=score&sort=desc`);
+        return response.data.data;
+    } catch (error) {
+        console.error('Error fetching anime by genre:', error);
+        return [];
+    }
+}
+
+// Function to handle the command for anime by genre
+async function handleAnimeGenreCommand(chatId, genre) {
+    const genreId = genreMap[genre];
+    if (!genreId) {
+        sendMessage(chatId, `Genre '${genre}' not found. Please try another genre.`);
+        return;
+    }
+
+    const animeList = await getAnimeByGenre(genreId);
+    if (animeList.length === 0) {
+        sendMessage(chatId, `No anime found in the genre '${genre}'.`);
+        return;
+    }
+
+    for (const anime of animeList.slice(0, 5)) { // Limit to top 5 anime
+        const imageUrl = anime.images.jpg.large_image_url;
+        const filename = `${anime.title.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
+
+        try {
+            const imagePath = await downloadImage(imageUrl, filename);
+            await sendMessage(
+                chatId,
+                `*Title:* ${anime.title}\n*Score:* ${anime.score}\n*Synopsis:* ${anime.synopsis}`,
+                imagePath
+            );
+            fs.unlinkSync(imagePath);
+        } catch (error) {
+            console.error(`Error downloading or sending image for ${anime.title}:`, error);
+            sendMessage(chatId, `Error fetching image for ${anime.title}.`);
+        }
+    }
+}
+
+// Function to download an image and return its path
+async function downloadImage(url, filename) {
+    const filePath = path.join(tempDir, filename);
+    const response = await axios({ url, responseType: 'stream' });
+
+    return new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(filePath);
+        response.data.pipe(writeStream);
+        writeStream.on('finish', () => resolve(filePath));
+        writeStream.on('error', reject);
+    });
+}
+
+// Function to send a message using whatsapp-web.js
+async function sendMessage(chatId, message, imagePath = null) {
+    if (imagePath) {
+        const media = new MessageMedia('image/jpeg', fs.readFileSync(imagePath).toString('base64'), path.basename(imagePath));
+        await client.sendMessage(chatId, media, { caption: message });
+    } else {
+        await client.sendMessage(chatId, message);
+    }
+}
+
+// Listen for incoming messages
+client.on('message', message => {
+    const chatId = message.from;
+    const text = message.body;
+
+    // Check if the message starts with !anime followed by a genre
+    if (text.startsWith('!anime ')) {
+        const genre = text.split(' ')[1];
+        handleAnimeGenreCommand(chatId, genre.charAt(0).toUpperCase() + genre.slice(1).toLowerCase());
+    }
+});
+
+// Create temp directory if it doesn't exist
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+}
+
+//////////
 // Handle commands
 client.on('message', async msg => {
     if (msg.body.startsWith(prefix)) {
